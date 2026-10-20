@@ -1,0 +1,1435 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>FEEDING FRENZY: MISI EJAAN SIHAT</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome for Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Font - Lexend (Highly legible for young learners & dyslexia-friendly) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* */
+    * {
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+      font-family: 'Lexend', sans-serif, system-ui;
+    }
+    
+    body {
+      background-color: #0c4a6e;
+      overflow: hidden;
+    }
+
+    /* Custom Scrollbar for Quiz Modals if content overflows */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 10px;
+    }
+
+    /* Pulse & Bounce animations */
+    @keyframes floatSlow {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-12px) rotate(2deg); }
+    }
+    .animate-float {
+      animation: floatSlow 4s ease-in-out infinite;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 15px rgba(56, 189, 248, 0.6); }
+      50% { box-shadow: 0 0 30px rgba(56, 189, 248, 1); }
+    }
+    .glow-button {
+      animation: pulseGlow 2s infinite;
+    }
+
+    /* Word Box styling for Sentence Sorting */
+    .word-tile {
+      transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .word-tile:active {
+      transform: scale(0.95);
+    }
+
+    /* Canvas full size */
+    #gameCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: linear-gradient(180deg, #0284c7 0%, #0369a1 40%, #075985 80%, #0c4a6e 100%);
+    }
+
+    /* Accessibility high-contrast focus rings */
+    button:focus-visible {
+      outline: 4px solid #facc15;
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+<body class="w-screen h-screen relative overflow-hidden bg-sky-950 text-white select-none">
+
+  <!-- GAME CANVAS FOR FEEDING FRENZY ARCADE -->
+  <canvas id="gameCanvas" class="absolute inset-0 z-0"></canvas>
+
+  <!-- TOP STATUS BAR (OVERLAY) -->
+  <header id="topStatusBar" class="hidden absolute top-3 left-3 right-3 z-20 flex flex-wrap items-center justify-between gap-2 bg-sky-900/80 backdrop-blur-md border-2 border-sky-400/50 p-2 sm:p-3 rounded-2xl shadow-xl max-w-5xl mx-auto">
+    <div class="flex items-center gap-2 sm:gap-4">
+      <!-- Stage/Level Indicator -->
+      <div class="bg-sky-800 border border-sky-300/40 px-3 py-1.5 rounded-xl flex items-center gap-2">
+        <i class="fa-solid fa-trophy text-amber-400 text-lg sm:text-xl"></i>
+        <div>
+          <div class="text-[10px] uppercase text-sky-200 font-bold tracking-wider leading-none">Tahap</div>
+          <div id="statLevel" class="text-sm sm:text-base font-extrabold text-amber-300 leading-tight">1</div>
+        </div>
+      </div>
+
+      <!-- Fish Eaten Tracker -->
+      <div class="bg-sky-800 border border-sky-300/40 px-3 py-1.5 rounded-xl flex items-center gap-2">
+        <i class="fa-solid fa-fish text-cyan-300 text-lg sm:text-xl"></i>
+        <div>
+          <div class="text-[10px] uppercase text-sky-200 font-bold tracking-wider leading-none">Ikan Dimakan</div>
+          <div id="statFish" class="text-sm sm:text-base font-extrabold text-cyan-200 leading-tight">0/3</div>
+        </div>
+      </div>
+
+      <!-- Stars Tracker -->
+      <div class="bg-sky-800 border border-sky-300/40 px-3 py-1.5 rounded-xl flex items-center gap-2">
+        <i class="fa-solid fa-star text-yellow-400 text-lg sm:text-xl"></i>
+        <div>
+          <div class="text-[10px] uppercase text-sky-200 font-bold tracking-wider leading-none">Bintang</div>
+          <div id="statStars" class="text-sm sm:text-base font-extrabold text-yellow-300 leading-tight">0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Progress Bar & Sound Controls -->
+    <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+      <!-- Mission Progress Bar -->
+      <div class="flex-1 sm:w-44 bg-sky-950 border border-sky-500/40 rounded-full h-4 overflow-hidden relative">
+        <div id="missionProgressBar" class="bg-gradient-to-r from-emerald-400 to-teal-300 h-full w-0% transition-all duration-500 rounded-full"></div>
+        <span id="missionProgressText" class="absolute inset-0 flex items-center justify-center text-[10px] font-black text-white drop-shadow">0%</span>
+      </div>
+
+      <!-- Global Audio Toggle Button -->
+      <button id="btnToggleAudio" onclick="gameApp.toggleGlobalAudio()" class="bg-sky-700 hover:bg-sky-600 border border-sky-400 p-2 rounded-xl text-yellow-300 transition active:scale-95 flex items-center justify-center w-10 h-10 shadow" title="Bunyi & Audio">
+        <i id="audioIcon" class="fa-solid fa-volume-high text-lg"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- FLOATING HUD TOAST FOR BINTANG & BOM -->
+  <div id="toastNotification" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-all duration-300 opacity-0 scale-90 bg-emerald-500 text-white px-6 py-3 rounded-2xl shadow-2xl border-2 border-white flex items-center gap-3 text-lg font-black">
+    <span id="toastIcon">⭐</span>
+    <span id="toastMessage">+1 BINTANG!</span>
+  </div>
+
+  <!-- 1. HALAMAN PEMBUKAAN (WELCOME SCREEN) -->
+  <section id="screenWelcome" class="absolute inset-0 z-30 flex flex-col items-center justify-between p-6 bg-gradient-to-b from-sky-900/90 via-sky-900/80 to-sky-950/95 backdrop-blur-sm text-center">
+    <div class="my-auto max-w-2xl flex flex-col items-center">
+      <!-- Title Badge -->
+      <div class="inline-flex items-center gap-2 bg-sky-800/80 border border-sky-300/40 px-4 py-1.5 rounded-full text-sky-200 text-sm font-semibold mb-4 shadow">
+        <span>🌊 Bahasa Melayu Sekolah Rendah (Tahun 2)</span>
+      </div>
+
+      <!-- Main Game Title -->
+      <h1 class="text-4xl sm:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-200 to-yellow-400 drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)] tracking-wide mb-2">
+        FEEDING FRENZY
+      </h1>
+      <h2 class="text-2xl sm:text-3xl font-extrabold text-cyan-300 drop-shadow mb-6 flex items-center justify-center gap-2">
+        📝 MISI EJAAN SIHAT
+      </h2>
+
+      <!-- Subtitle -->
+      <p class="text-lg sm:text-xl font-medium text-sky-100 mb-8 max-w-lg leading-relaxed bg-sky-950/60 p-4 rounded-2xl border border-sky-500/30">
+        “Jom makan, belajar dan jadi <span class="text-yellow-300 font-bold">JUARA EJAAN!</span>”
+      </p>
+
+      <!-- Cute Main Character Fish Illustration -->
+      <div class="relative mb-8 animate-float cursor-pointer" onclick="gameApp.playSplashFishAnim()">
+        <div class="w-36 h-36 sm:w-44 sm:h-44 bg-gradient-to-tr from-amber-400 to-yellow-300 rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(251,191,36,0.5)] border-4 border-white/80 relative">
+          <!-- SVG Fish Vector -->
+          <svg class="w-28 h-28 sm:w-32 sm:h-32 text-amber-900" viewBox="0 0 100 100" fill="currentColor">
+            <!-- Fish Tail -->
+            <path d="M 15,50 L 2,25 Q 0,50 2,75 Z" fill="#f59e0b" />
+            <!-- Fish Body -->
+            <ellipse cx="55" cy="50" rx="35" ry="25" fill="#fbbf24" />
+            <!-- Fins -->
+            <path d="M 50,25 Q 60,5 75,25 Z" fill="#f59e0b" />
+            <path d="M 50,75 Q 60,95 75,75 Z" fill="#f59e0b" />
+            <!-- Cute Eye -->
+            <circle cx="72" cy="42" r="7" fill="white" />
+            <circle cx="74" cy="42" r="3.5" fill="#0f172a" />
+            <circle cx="76" cy="40" r="1.5" fill="white" />
+            <!-- Cheerful Smile -->
+            <path d="M 75,55 Q 70,62 64,55" stroke="#78350f" stroke-width="2.5" fill="none" stroke-linecap="round" />
+            <!-- Cute Blush -->
+            <ellipse cx="64" cy="52" rx="4" ry="2.5" fill="#f43f5e" opacity="0.6" />
+          </svg>
+          <!-- Bubbles decor -->
+          <span class="absolute -top-2 -right-2 text-2xl animate-bounce">🫧</span>
+        </div>
+      </div>
+
+      <!-- Quick Instruction -->
+      <div class="bg-sky-800/90 border border-sky-400/50 p-4 rounded-2xl max-w-md text-sm sm:text-base text-sky-100 mb-8 shadow-md">
+        💡 <span class="font-bold text-yellow-300">Arahan Ringkas:</span> Kawal ikan kamu, makan ikan kecil dan selesaikan setiap misi untuk membuka tahap seterusnya!
+      </div>
+
+      <!-- Start Button -->
+      <button onclick="gameApp.showMissionMap()" class="glow-button bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:from-amber-300 hover:to-yellow-400 text-sky-950 font-black text-xl sm:text-2xl px-10 py-4 rounded-2xl border-4 border-white shadow-2xl transition transform hover:scale-105 active:scale-95 flex items-center gap-3">
+        <i class="fa-solid fa-play"></i> ▶ MULA MISI
+      </button>
+    </div>
+
+    <!-- Footer credit -->
+    <div class="text-xs text-sky-300/80 font-medium pb-2">
+      Reka Bentuk Pendidikan Digital Bahasa Melayu Sekolah Rendah
+    </div>
+  </section>
+
+  <!-- 2. PETA MISI (MISSION MAP SCREEN) -->
+  <section id="screenMissionMap" class="hidden absolute inset-0 z-30 flex flex-col items-center justify-between p-4 sm:p-6 bg-gradient-to-b from-sky-900/95 to-sky-950/98 backdrop-blur-md text-center overflow-y-auto">
+    <div class="w-full max-w-3xl my-auto flex flex-col items-center py-4">
+      <!-- Title -->
+      <div class="mb-6">
+        <h2 class="text-3xl sm:text-4xl font-black text-yellow-300 drop-shadow flex items-center justify-center gap-2">
+          🌊 MISI KITA HARI INI!
+        </h2>
+        <p class="text-sky-200 text-sm sm:text-base mt-1">Selesaikan setiap tahap untuk mengumpul Bintang & Lencana Juara!</p>
+      </div>
+
+      <!-- Mission Grid (4 Missions) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full mb-8">
+        <!-- MISI 1 -->
+        <div id="cardMission1" class="bg-sky-800/90 border-2 border-amber-400 rounded-2xl p-5 text-left flex flex-col justify-between shadow-xl relative overflow-hidden transition transform hover:scale-[1.02]">
+          <div class="flex items-start justify-between gap-2 mb-2">
+            <div class="flex items-center gap-2">
+              <span class="w-8 h-8 rounded-full bg-amber-400 text-sky-950 font-black flex items-center justify-center text-sm">1</span>
+              <h3 class="font-bold text-lg text-amber-300">🟡 MISI 1: KENALI PERKATAAN</h3>
+            </div>
+            <span id="badgeStatus1" class="text-xl">⭐</span>
+          </div>
+          <p class="text-sm text-sky-100 mb-4 font-medium">“Kenali perkataan berkaitan pemakanan dan kesihatan.”</p>
+          <button id="btnStartMisi1" onclick="gameApp.startLevel(1)" class="w-full bg-amber-400 hover:bg-amber-300 text-sky-950 font-bold py-2.5 px-4 rounded-xl border border-white shadow flex items-center justify-center gap-2 transition">
+            <i class="fa-solid fa-gamepad"></i> Mula Misi 1
+          </button>
+        </div>
+
+        <!-- MISI 2 -->
+        <div id="cardMission2" class="bg-sky-900/60 border-2 border-sky-700 rounded-2xl p-5 text-left flex flex-col justify-between shadow-xl relative overflow-hidden transition">
+          <div class="flex items-start justify-between gap-2 mb-2">
+            <div class="flex items-center gap-2">
+              <span class="w-8 h-8 rounded-full bg-sky-600 text-white font-black flex items-center justify-center text-sm">2</span>
+              <h3 class="font-bold text-lg text-sky-300">🔵 MISI 2: PERHATIKAN EJAAN</h3>
+            </div>
+            <span id="badgeStatus2" class="text-xl">🔒</span>
+          </div>
+          <p class="text-sm text-sky-200/80 mb-4 font-medium">“Bezakan ejaan yang betul dan ejaan yang salah.”</p>
+          <button id="btnStartMisi2" disabled onclick="gameApp.startLevel(2)" class="w-full bg-slate-700 text-slate-400 font-bold py-2.5 px-4 rounded-xl border border-slate-600 cursor-not-allowed flex items-center justify-center gap-2 transition">
+            🔒 Terkunci
+          </button>
+        </div>
+
+        <!-- MISI 3 -->
+        <div id="cardMission3" class="bg-sky-900/60 border-2 border-sky-700 rounded-2xl p-5 text-left flex flex-col justify-between shadow-xl relative overflow-hidden transition">
+          <div class="flex items-start justify-between gap-2 mb-2">
+            <div class="flex items-center gap-2">
+              <span class="w-8 h-8 rounded-full bg-purple-600 text-white font-black flex items-center justify-center text-sm">3</span>
+              <h3 class="font-bold text-lg text-purple-300">🟣 MISI 3: BETULKAN EJAAN</h3>
+            </div>
+            <span id="badgeStatus3" class="text-xl">🔒</span>
+          </div>
+          <p class="text-sm text-sky-200/80 mb-4 font-medium">“Jadi Detektif Ejaan dan betulkan kesalahan dalam ayat.”</p>
+          <button id="btnStartMisi3" disabled onclick="gameApp.startLevel(3)" class="w-full bg-slate-700 text-slate-400 font-bold py-2.5 px-4 rounded-xl border border-slate-600 cursor-not-allowed flex items-center justify-center gap-2 transition">
+            🔒 Terkunci
+          </button>
+        </div>
+
+        <!-- MISI 4 -->
+        <div id="cardMission4" class="bg-sky-900/60 border-2 border-sky-700 rounded-2xl p-5 text-left flex flex-col justify-between shadow-xl relative overflow-hidden transition">
+          <div class="flex items-start justify-between gap-2 mb-2">
+            <div class="flex items-center gap-2">
+              <span class="w-8 h-8 rounded-full bg-orange-500 text-white font-black flex items-center justify-center text-sm">4</span>
+              <h3 class="font-bold text-lg text-orange-300">🟠 MISI 4: BINA AYAT</h3>
+            </div>
+            <span id="badgeStatus4" class="text-xl">🔒</span>
+          </div>
+          <p class="text-sm text-sky-200/80 mb-4 font-medium">“Gunakan perkataan yang dipelajari untuk membina ayat.”</p>
+          <button id="btnStartMisi4" disabled onclick="gameApp.startLevel(4)" class="w-full bg-slate-700 text-slate-400 font-bold py-2.5 px-4 rounded-xl border border-slate-600 cursor-not-allowed flex items-center justify-center gap-2 transition">
+            🔒 Terkunci
+          </button>
+        </div>
+      </div>
+
+      <!-- Back to Main Menu Button -->
+      <button onclick="gameApp.showWelcomeScreen()" class="bg-sky-800 hover:bg-sky-700 text-white font-bold py-2.5 px-6 rounded-xl border border-sky-400/60 shadow transition flex items-center gap-2">
+        <i class="fa-solid fa-house"></i> Halaman Utama
+      </button>
+    </div>
+  </section>
+
+  <!-- 3. INTERACTIVE QUIZ MODAL OVERLAY (TRIGGERS AFTER FEEDING FISH) -->
+  <div id="modalQuizOverlay" class="hidden fixed inset-0 z-40 bg-sky-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+    <div class="bg-gradient-to-b from-sky-800 to-sky-900 border-4 border-sky-300 rounded-3xl p-5 sm:p-7 max-w-2xl w-full shadow-2xl relative text-left my-auto">
+      
+      <!-- Level Banner -->
+      <div class="flex items-center justify-between border-b border-sky-600/60 pb-3 mb-4">
+        <div class="flex items-center gap-3">
+          <span id="modalLevelBadge" class="bg-amber-400 text-sky-950 font-black px-3 py-1 rounded-xl text-xs sm:text-sm uppercase tracking-wide">
+            Tahap 1
+          </span>
+          <span id="modalQuestionCount" class="text-sky-200 text-xs sm:text-sm font-semibold">Soalan 1 daripada 3</span>
+        </div>
+
+        <!-- Audio Voice Controls -->
+        <div class="flex items-center gap-2">
+          <button onclick="gameApp.speakCurrentQuestion()" class="bg-amber-400 hover:bg-amber-300 text-sky-950 font-bold px-3 py-1.5 rounded-xl text-xs sm:text-sm border border-white flex items-center gap-1.5 transition shadow" title="Dengar Soalan">
+            <i class="fa-solid fa-volume-high"></i> 🔊 Dengar
+          </button>
+          <button onclick="gameApp.stopSpeech()" class="bg-sky-700 hover:bg-sky-600 text-sky-200 font-bold px-2.5 py-1.5 rounded-xl text-xs border border-sky-500 flex items-center gap-1 transition" title="Henti Suara">
+            <i class="fa-solid fa-volume-xmark"></i> 🔇 Henti
+          </button>
+        </div>
+      </div>
+
+      <!-- Question Title / Prompt Container -->
+      <div id="questionContainer" class="mb-6">
+        <h3 id="questionInstruction" class="text-sm font-bold text-yellow-300 uppercase tracking-wide mb-1">
+          Pilih ejaan yang betul
+        </h3>
+        <div id="questionText" class="text-xl sm:text-2xl font-extrabold text-white leading-relaxed bg-sky-950/60 p-4 rounded-2xl border border-sky-500/40">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Multiple Choice Options Container (Level 1) -->
+      <div id="containerOptions" class="grid grid-cols-1 gap-3 mb-6">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <!-- Interactive Sentence Ordering Container (Level 2) -->
+      <div id="containerSentenceSort" class="hidden mb-6">
+        <p class="text-xs text-sky-200 mb-2 font-medium">Tekan atau seret petak perkataan ke ruang jawapan di bawah:</p>
+        
+        <!-- Answer Slot (Selected words) -->
+        <div class="mb-3">
+          <div class="text-xs font-bold text-amber-300 mb-1">Ruang Jawapan Kamu:</div>
+          <div id="sentenceAnswerSlot" class="min-h-[70px] p-3 bg-sky-950/80 rounded-2xl border-2 border-dashed border-sky-400 flex flex-wrap gap-2 items-center">
+            <span class="text-sky-400/60 text-sm font-italic italic">Sila pilih petak perkataan di bawah...</span>
+          </div>
+        </div>
+
+        <!-- Available Word Tiles Pool -->
+        <div>
+          <div class="text-xs font-bold text-sky-200 mb-1">Petak Perkataan:</div>
+          <div id="sentenceTilesPool" class="flex flex-wrap gap-2 p-3 bg-sky-900/80 rounded-2xl border border-sky-600/60 min-h-[60px] items-center">
+            <!-- Tiles rendered dynamically -->
+          </div>
+        </div>
+
+        <!-- Action Buttons for Sentence Sort -->
+        <div class="flex items-center gap-3 mt-4">
+          <button onclick="gameApp.checkSentenceOrder()" class="flex-1 bg-emerald-500 hover:bg-emerald-400 text-white font-extrabold py-3 px-4 rounded-xl border border-white shadow transition flex items-center justify-center gap-2">
+            🔍 Semak Susunan
+          </button>
+          <button onclick="gameApp.resetSentenceOrder()" class="bg-sky-700 hover:bg-sky-600 text-sky-100 font-bold py-3 px-4 rounded-xl border border-sky-400 shadow transition flex items-center justify-center gap-2">
+            🔄 Susun Semula
+          </button>
+        </div>
+      </div>
+
+      <!-- Text Fill-in Input Container (Level 3) -->
+      <div id="containerFillBlank" class="hidden mb-6">
+        <label for="inputBlankAnswer" class="block text-xs font-bold text-amber-300 mb-2">Taip jawapan kamu di sini:</label>
+        <div class="flex gap-2">
+          <input type="text" id="inputBlankAnswer" placeholder="Taip jawapan di sini..." class="w-full bg-sky-950 border-2 border-sky-400 rounded-xl px-4 py-3 text-white text-lg font-semibold focus:outline-none focus:border-yellow-400" autocomplete="off" />
+          <button onclick="gameApp.submitFillBlank()" class="bg-emerald-500 hover:bg-emerald-400 text-white font-extrabold px-6 py-3 rounded-xl border border-white shadow transition whitespace-nowrap">
+            Hantar
+          </button>
+        </div>
+      </div>
+
+      <!-- Feedback Banner Box -->
+      <div id="feedbackBox" class="hidden p-4 rounded-2xl border-2 flex items-center gap-3 transition">
+        <span id="feedbackIcon" class="text-2xl"></span>
+        <div id="feedbackText" class="text-base font-bold"></div>
+      </div>
+
+      <!-- Next / Continue Button (Shown after answering) -->
+      <div class="mt-6 flex justify-end">
+        <button id="btnContinueQuiz" onclick="gameApp.handleContinueQuiz()" class="hidden bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-sky-950 font-black text-lg px-8 py-3 rounded-2xl border-2 border-white shadow-xl transition transform hover:scale-105 active:scale-95 flex items-center gap-2">
+          Teruskan <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 4. TAMAT PERMAINAN / SKRIN KEMENANGAN (VICTORY SCREEN) -->
+  <section id="screenVictory" class="hidden absolute inset-0 z-50 flex flex-col items-center justify-center p-6 bg-gradient-to-b from-sky-900 via-sky-950 to-slate-950 text-center overflow-y-auto">
+    <div class="max-w-xl w-full bg-sky-900/90 border-4 border-yellow-400 p-6 sm:p-8 rounded-3xl shadow-2xl backdrop-blur-md flex flex-col items-center my-auto">
+      
+      <!-- Victory Header -->
+      <div class="text-5xl sm:text-6xl mb-2 animate-bounce">🎉</div>
+      <h2 class="text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-200 to-yellow-400 tracking-wide mb-1">
+        TAHNIAH!
+      </h2>
+      <p class="text-lg sm:text-xl font-bold text-sky-200 mb-4">
+        Kamu berjaya menyelesaikan <br><span class="text-yellow-300">MISI EJAAN SIHAT!</span>
+      </p>
+
+      <!-- 5-Star Display -->
+      <div class="flex items-center justify-center gap-2 text-3xl sm:text-4xl text-yellow-400 mb-6 drop-shadow">
+        ⭐ ⭐ ⭐ ⭐ ⭐
+      </div>
+
+      <!-- Trophy Badge -->
+      <div class="bg-gradient-to-b from-amber-400 to-yellow-500 border-4 border-white text-sky-950 font-black px-8 py-4 rounded-2xl shadow-xl flex items-center gap-3 text-2xl mb-6 transform -rotate-1">
+        <i class="fa-solid fa-trophy text-amber-900 text-3xl"></i>
+        <span>🏆 JUARA EJAAN</span>
+      </div>
+
+      <!-- Positive Feedback Summary -->
+      <p class="text-sm sm:text-base text-sky-100 bg-sky-950/80 p-4 rounded-2xl border border-sky-500/40 mb-8 leading-relaxed font-medium">
+        “Hebat! Kamu telah berjaya mengenal pasti ejaan, membetulkan kesalahan dan melengkapkan ayat Bahasa Melayu.”
+      </p>
+
+      <!-- Action Buttons -->
+      <div class="flex flex-col sm:flex-row gap-3 w-full">
+        <button onclick="gameApp.restartGame()" class="flex-1 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-sky-950 font-black py-3.5 px-4 rounded-2xl border-2 border-white shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2 text-base">
+          🔄 MAIN SEMULA
+        </button>
+        <button onclick="gameApp.showMissionMap()" class="flex-1 bg-sky-700 hover:bg-sky-600 text-white font-bold py-3.5 px-4 rounded-2xl border border-sky-400 shadow-lg transition flex items-center justify-center gap-2 text-base">
+          🗺️ LIHAT MISI
+        </button>
+        <button onclick="gameApp.speakVictoryMessage()" class="bg-sky-800 hover:bg-sky-700 text-yellow-300 font-bold p-3.5 rounded-2xl border border-sky-400 shadow-lg transition flex items-center justify-center text-lg" title="Dengar Semula">
+          🔊
+        </button>
+      </div>
+
+    </div>
+  </section>
+
+  <script>
+    /* =========================================================================
+       QUESTION BANK (DESIGND FOR EASY MAINTENANCE BY TEACHERS)
+       ========================================================================= */
+    const QUESTION_BANK = {
+      // LEVEL 1: Low Difficulty (Multiple Choice)
+      level1: [
+        {
+          id: 'l1_q1',
+          instruction: 'Pilih ejaan yang betul',
+          question: 'Manakah ejaan yang betul bagi buah-buahan?',
+          options: ['1. Buahan', '2. Buah-buah', '3. Buah-buahan'],
+          correctIndex: 2, // 3. Buah-buahan
+          speechText: 'Pilih ejaan yang betul. Nombor satu, Buahan. Nombor dua, Buah-buah. Nombor tiga, Buah-buahan.'
+        },
+        {
+          id: 'l1_q2',
+          instruction: 'Betulkan ejaan yang salah dalam ayat berikut:',
+          question: '‘Ali suka makan makanan yang <span class="text-yellow-300 underline font-bold">maneh</span>.’',
+          options: ['1. Manis', '2. Minum', '3. Manes'],
+          correctIndex: 0, // 1. Manis
+          speechText: 'Betulkan ejaan yang salah. Ali suka makan makanan yang maneh. Pilihan jawapan: Satu, Manis. Dua, Minum. Tiga, Manes.'
+        },
+        {
+          id: 'l1_q3',
+          instruction: 'Apakah kesalahan ejaan pada ayat berikut:',
+          question: '‘Kita perlu makan makanan berpandukan piramid makanan.’',
+          options: ['1. Piramid', '2. Berpandukan', '3. Tiada kesalahan ejaan'],
+          correctIndex: 2, // 3. Tiada kesalahan ejaan
+          speechText: 'Apakah kesalahan ejaan pada ayat: Kita perlu makan makanan berpandukan piramid makanan. Pilihan jawapan: Satu, Piramid. Dua, Berpandukan. Tiga, Tiada kesalahan ejaan.'
+        }
+      ],
+
+      // LEVEL 2: Medium Difficulty (Sentence Ordering)
+      level2: [
+        {
+          id: 'l2_q1',
+          instruction: 'Tulis dan susun ayat di bawah menjadi satu ayat yang betul.',
+          words: ['makanan', 'ali', 'basi', 'telah', 'keracunan', 'makan', 'kerana', 'makanan'],
+          // Accept exact string sequence case-insensitive
+          correctSentence: 'Ali telah keracunan makanan kerana makan makanan basi.',
+          speechText: 'Tulis dan susun ayat di bawah menjadi satu ayat yang betul.'
+        },
+        {
+          id: 'l2_q2',
+          instruction: 'Tulis dan susun ayat di bawah menjadi satu ayat yang betul.',
+          words: ['buah-buahan', 'Saffa', 'membasuh', 'sebelum', 'makan', 'segar'],
+          correctSentence: 'Sebelum makan, Saffa membasuh buah-buahan segar.',
+          speechText: 'Tulis dan susun ayat di bawah menjadi satu ayat yang betul.'
+        }
+      ],
+
+      // LEVEL 3: High Difficulty (Fill-in-the-blank)
+      level3: [
+        {
+          id: 'l3_q1',
+          instruction: 'Lengkapkan ayat di bawah supaya menjadi ayat yang lengkap.',
+          question: 'Ali tidak <span class="text-yellow-300 font-bold">______</span> makan sayur.',
+          acceptedAnswers: ['suka', 'gemar'],
+          speechText: 'Lengkapkan ayat di bawah: Ali tidak tempat kosong makan sayur.'
+        },
+        {
+          id: 'l3_q2',
+          instruction: 'Lengkapkan ayat di bawah supaya menjadi ayat yang lengkap.',
+          question: 'Sayur-<span class="text-yellow-300 font-bold">______</span> bagus untuk kesihatan.',
+          acceptedAnswers: ['sayuran'],
+          speechText: 'Lengkapkan ayat di bawah: Sayur tempat kosong bagus untuk kesihatan.'
+        },
+        {
+          id: 'l3_q3',
+          instruction: 'Lengkapkan ayat di bawah supaya menjadi ayat yang lengkap.',
+          question: 'Jangan makan makanan yang telah <span class="text-yellow-300 font-bold">_____</span>.',
+          acceptedAnswers: ['basi', 'rosak', 'busuk'],
+          speechText: 'Lengkapkan ayat di bawah: Jangan makan makanan yang telah tempat kosong.'
+        }
+      ]
+    };
+
+    /* =========================================================================
+       AUDIO SYSTEM (WEB AUDIO SYNTHESIS & SPEECH SYNTHESIS)
+       ========================================================================= */
+    class SoundSystem {
+      constructor() {
+        this.ctx = null;
+        this.audioEnabled = true;
+        this.synth = window.speechSynthesis || null;
+      }
+
+      initCtx() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) this.ctx = new AudioContext();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      // Play short "TING!" sound when eating fish
+      playTing() {
+        if (!this.audioEnabled) return;
+        this.initCtx();
+        if (!this.ctx) return;
+
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(880, this.ctx.currentTime); // A5
+          osc.frequency.exponentialRampToValueAtTime(1760, this.ctx.currentTime + 0.15); // A6
+
+          gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.2);
+        } catch (e) {
+          console.warn('Audio synth error', e);
+        }
+      }
+
+      // Play "TETTTTT!" sound when hitting a bomb
+      playBombTet() {
+        if (!this.audioEnabled) return;
+        this.initCtx();
+        if (!this.ctx) return;
+
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+          osc.frequency.linearRampToValueAtTime(80, this.ctx.currentTime + 0.4);
+
+          gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.4);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.4);
+        } catch (e) {
+          console.warn('Audio synth error', e);
+        }
+      }
+
+      // Text-To-Speech using standard Malay voice (ms-MY)
+      speak(text) {
+        if (!this.audioEnabled || !this.synth) return;
+        this.stopSpeech(); // Stop previous speech
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'ms-MY';
+        utterance.rate = 0.80; // Slower rate for young learners (0.75-0.85 requirement)
+        utterance.pitch = 1.0;
+
+        // Try to select standard Malay voice if available
+        const voices = this.synth.getVoices();
+        const msVoice = voices.find(v => v.lang.startsWith('ms') || v.lang.startsWith('id'));
+        if (msVoice) utterance.voice = msVoice;
+
+        this.synth.speak(utterance);
+      }
+
+      stopSpeech() {
+        if (this.synth && this.synth.speaking) {
+          this.synth.cancel();
+        }
+      }
+    }
+
+    /* =========================================================================
+       CANVAS GAME ENGINE (FEEDING FRENZY MECHANICS)
+       ========================================================================= */
+    class FeedingFrenzyEngine {
+      constructor(canvas, onEatFishCallback, onHitBombCallback) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.onEatFish = onEatFishCallback;
+        this.onHitBomb = onHitBombCallback;
+
+        this.isRunning = false;
+        this.animFrame = null;
+
+        // Player Fish properties
+        this.player = {
+          x: 200,
+          y: 200,
+          baseRadius: 28,
+          radius: 28,
+          targetX: 200,
+          targetY: 200,
+          angle: 0,
+          scaleX: 1,
+          eatenCount: 0
+        };
+
+        // Entities
+        this.fishes = [];
+        this.bombs = [];
+        this.bubbles = [];
+        this.decorations = [];
+
+        // Level physics configuration
+        this.config = {
+          fishSpeedMin: 1,
+          fishSpeedMax: 2,
+          bombSpeedMin: 1,
+          bombSpeedMax: 2,
+          bombCount: 1,
+          targetFish: 3
+        };
+
+        this.setupListeners();
+        this.resize();
+      }
+
+      resize() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+        this.generateDecorations();
+      }
+
+      setupListeners() {
+        window.addEventListener('resize', () => this.resize());
+
+        // Mouse / Touch Controls
+        const handleMove = (e) => {
+          if (!this.isRunning) return;
+          const rect = this.canvas.getBoundingClientRect();
+          let clientX, clientY;
+          if (e.touches && e.touches[0]) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+          } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+          }
+          this.player.targetX = clientX - rect.left;
+          this.player.targetY = clientY - rect.top;
+        };
+
+        this.canvas.addEventListener('mousemove', handleMove);
+        this.canvas.addEventListener('touchmove', handleMove, { passive: true });
+        this.canvas.addEventListener('touchstart', handleMove, { passive: true });
+      }
+
+      setConfigForLevel(level) {
+        this.player.eatenCount = 0;
+        this.player.radius = this.player.baseRadius;
+
+        if (level === 1) {
+          // Easy
+          this.config = { fishSpeedMin: 1.0, fishSpeedMax: 2.0, bombSpeedMin: 1.0, bombSpeedMax: 1.8, bombCount: 1, targetFish: 3 };
+        } else if (level === 2) {
+          // Medium
+          this.config = { fishSpeedMin: 2.0, fishSpeedMax: 3.2, bombSpeedMin: 2.0, bombSpeedMax: 3.0, bombCount: 2, targetFish: 3 };
+        } else if (level === 3) {
+          // High
+          this.config = { fishSpeedMin: 3.0, fishSpeedMax: 4.5, bombSpeedMin: 3.2, bombSpeedMax: 4.5, bombCount: 3, targetFish: 3 };
+        } else {
+          // Mission 4 or Bonus
+          this.config = { fishSpeedMin: 2.5, fishSpeedMax: 3.8, bombSpeedMin: 2.5, bombSpeedMax: 3.8, bombCount: 2, targetFish: 3 };
+        }
+
+        this.spawnEntities();
+      }
+
+      generateDecorations() {
+        this.decorations = [];
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+
+        // Seaweed & Corals at bottom
+        for (let i = 0; i < w; i += 40) {
+          this.decorations.push({
+            x: i,
+            height: 60 + Math.random() * 80,
+            type: Math.random() > 0.5 ? 'seaweed' : 'coral',
+            color: Math.random() > 0.5 ? '#10b981' : '#f43f5e'
+          });
+        }
+      }
+
+      spawnEntities() {
+        this.fishes = [];
+        this.bombs = [];
+        this.bubbles = [];
+
+        // Spawn Small Target Fishes
+        for (let i = 0; i < 4; i++) {
+          this.spawnSmallFish();
+        }
+
+        // Spawn Bombs based on level config
+        for (let i = 0; i < this.config.bombCount; i++) {
+          this.spawnBomb();
+        }
+
+        // Spawn Ambient Background Bubbles
+        for (let i = 0; i < 15; i++) {
+          this.bubbles.push({
+            x: Math.random() * this.canvas.width,
+            y: Math.random() * this.canvas.height,
+            r: 3 + Math.random() * 6,
+            speed: 0.5 + Math.random() * 1.5
+          });
+        }
+      }
+
+      spawnSmallFish() {
+        const fromLeft = Math.random() > 0.5;
+        const radius = 14 + Math.random() * 6;
+        this.fishes.push({
+          x: fromLeft ? -30 : this.canvas.width + 30,
+          y: 80 + Math.random() * (this.canvas.height - 180),
+          r: radius,
+          vx: (fromLeft ? 1 : -1) * (this.config.fishSpeedMin + Math.random() * (this.config.fishSpeedMax - this.config.fishSpeedMin)),
+          vy: (Math.random() - 0.5) * 0.8,
+          color: ['#38bdf8', '#34d399', '#f43f5e', '#a855f7', '#fbbf24'][Math.floor(Math.random() * 5)]
+        });
+      }
+
+      spawnBomb() {
+        const fromLeft = Math.random() > 0.5;
+        this.bombs.push({
+          x: fromLeft ? -40 : this.canvas.width + 40,
+          y: 100 + Math.random() * (this.canvas.height - 200),
+          r: 18,
+          vx: (fromLeft ? 1 : -1) * (this.config.bombSpeedMin + Math.random() * (this.config.bombSpeedMax - this.config.bombSpeedMin)),
+          vy: (Math.random() - 0.5) * 1.2
+        });
+      }
+
+      start() {
+        this.isRunning = true;
+        this.loop();
+      }
+
+      stop() {
+        this.isRunning = false;
+        if (this.animFrame) cancelAnimationFrame(this.animFrame);
+      }
+
+      update() {
+        const p = this.player;
+
+        // Smoothly interpolate player towards mouse/touch target
+        const dx = p.targetX - p.x;
+        const dy = p.targetY - p.y;
+        p.x += dx * 0.12;
+        p.y += dy * 0.12;
+
+        if (Math.abs(dx) > 2) {
+          p.scaleX = dx > 0 ? 1 : -1;
+        }
+
+        // Keep player in bounds
+        p.x = Math.max(p.radius, Math.min(this.canvas.width - p.radius, p.x));
+        p.y = Math.max(p.radius, Math.min(this.canvas.height - p.radius, p.y));
+
+        // Update Bubbles
+        this.bubbles.forEach(b => {
+          b.y -= b.speed;
+          if (b.y < -10) {
+            b.y = this.canvas.height + 10;
+            b.x = Math.random() * this.canvas.width;
+          }
+        });
+
+        // Update Small Fishes & Check Collision
+        for (let i = this.fishes.length - 1; i >= 0; i--) {
+          const f = this.fishes[i];
+          f.x += f.vx;
+          f.y += f.vy;
+
+          // Bounce vertically slightly
+          if (f.y < 60 || f.y > this.canvas.height - 80) f.vy *= -1;
+
+          // Check hit with Player
+          const dist = Math.hypot(p.x - f.x, p.y - f.y);
+          if (dist < p.radius + f.r) {
+            // Eaten!
+            this.fishes.splice(i, 1);
+            p.eatenCount++;
+            p.radius += 3.5; // Grow main fish slightly
+            this.onEatFish(p.eatenCount, this.config.targetFish);
+            this.spawnSmallFish();
+            continue;
+          }
+
+          // Respawn if offscreen
+          if ((f.vx > 0 && f.x > this.canvas.width + 50) || (f.vx < 0 && f.x < -50)) {
+            this.fishes.splice(i, 1);
+            this.spawnSmallFish();
+          }
+        }
+
+        // Update Bombs & Check Collision
+        for (let i = this.bombs.length - 1; i >= 0; i--) {
+          const b = this.bombs[i];
+          b.x += b.vx;
+          b.y += b.vy;
+
+          if (b.y < 60 || b.y > this.canvas.height - 80) b.vy *= -1;
+
+          const dist = Math.hypot(p.x - b.x, p.y - b.y);
+          if (dist < p.radius + b.r) {
+            // Hit Bomb!
+            this.bombs.splice(i, 1);
+            p.radius = Math.max(p.baseRadius, p.radius - 4); // Shrink slightly
+            this.onHitBomb();
+            this.spawnBomb();
+            continue;
+          }
+
+          if ((b.vx > 0 && b.x > this.canvas.width + 50) || (b.vx < 0 && b.x < -50)) {
+            this.bombs.splice(i, 1);
+            this.spawnBomb();
+          }
+        }
+      }
+
+      draw() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Draw Sea Floor Decorations
+        this.decorations.forEach(d => {
+          this.ctx.fillStyle = d.color;
+          this.ctx.beginPath();
+          if (d.type === 'seaweed') {
+            this.ctx.moveTo(d.x, this.canvas.height);
+            this.ctx.quadraticCurveTo(d.x + 10, this.canvas.height - d.height / 2, d.x, this.canvas.height - d.height);
+            this.ctx.quadraticCurveTo(d.x - 10, this.canvas.height - d.height / 2, d.x + 8, this.canvas.height);
+          } else {
+            this.ctx.arc(d.x, this.canvas.height - 10, 15, Math.PI, 0);
+          }
+          this.ctx.fill();
+        });
+
+        // Draw Ambient Bubbles
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+        this.bubbles.forEach(b => {
+          this.ctx.beginPath();
+          this.ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+          this.ctx.fill();
+          this.ctx.stroke();
+        });
+
+        // Draw Small Fishes
+        this.fishes.forEach(f => {
+          this.ctx.save();
+          this.ctx.translate(f.x, f.y);
+          this.ctx.scale(f.vx > 0 ? 1 : -1, 1);
+
+          // Body
+          this.ctx.fillStyle = f.color;
+          this.ctx.beginPath();
+          this.ctx.ellipse(0, 0, f.r, f.r * 0.7, 0, 0, Math.PI * 2);
+          this.ctx.fill();
+
+          // Tail
+          this.ctx.beginPath();
+          this.ctx.moveTo(-f.r, 0);
+          this.ctx.lineTo(-f.r - 8, -6);
+          this.ctx.lineTo(-f.r - 8, 6);
+          this.ctx.closePath();
+          this.ctx.fill();
+
+          // Eye
+          this.ctx.fillStyle = '#ffffff';
+          this.ctx.beginPath();
+          this.ctx.arc(f.r * 0.4, -f.r * 0.2, 3, 0, Math.PI * 2);
+          this.ctx.fill();
+          this.ctx.fillStyle = '#000000';
+          this.ctx.beginPath();
+          this.ctx.arc(f.r * 0.5, -f.r * 0.2, 1.5, 0, Math.PI * 2);
+          this.ctx.fill();
+
+          this.ctx.restore();
+        });
+
+        // Draw Bombs
+        this.bombs.forEach(b => {
+          this.ctx.save();
+          this.ctx.translate(b.x, b.y);
+
+          // Black Sphere
+          this.ctx.fillStyle = '#1e293b';
+          this.ctx.beginPath();
+          this.ctx.arc(0, 0, b.r, 0, Math.PI * 2);
+          this.ctx.fill();
+          this.ctx.strokeStyle = '#ef4444';
+          this.ctx.lineWidth = 2;
+          this.ctx.stroke();
+
+          // Danger Icon / Spikes
+          this.ctx.fillStyle = '#f59e0b';
+          this.ctx.font = '14px sans-serif';
+          this.ctx.textAlign = 'center';
+          this.ctx.textBaseline = 'middle';
+          this.ctx.fillText('💣', 0, 1);
+
+          this.ctx.restore();
+        });
+
+        // Draw Player Main Fish
+        const p = this.player;
+        this.ctx.save();
+        this.ctx.translate(p.x, p.y);
+        this.ctx.scale(p.scaleX, 1);
+
+        // Fish Body
+        this.ctx.fillStyle = '#fbbf24'; // Cute Golden Yellow
+        this.ctx.beginPath();
+        this.ctx.ellipse(0, 0, p.radius * 1.3, p.radius, 0, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.strokeStyle = '#ffffff';
+        this.ctx.lineWidth = 3;
+        this.ctx.stroke();
+
+        // Fish Tail
+        this.ctx.fillStyle = '#f59e0b';
+        this.ctx.beginPath();
+        this.ctx.moveTo(-p.radius * 1.2, 0);
+        this.ctx.lineTo(-p.radius * 1.8, -p.radius * 0.7);
+        this.ctx.lineTo(-p.radius * 1.8, p.radius * 0.7);
+        this.ctx.closePath();
+        this.ctx.fill();
+
+        // Cute Large Eye
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.beginPath();
+        this.ctx.arc(p.radius * 0.6, -p.radius * 0.25, p.radius * 0.3, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.fillStyle = '#0f172a';
+        this.ctx.beginPath();
+        this.ctx.arc(p.radius * 0.7, -p.radius * 0.25, p.radius * 0.15, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Smile
+        this.ctx.strokeStyle = '#78350f';
+        this.ctx.lineWidth = 2.5;
+        this.ctx.beginPath();
+        this.ctx.arc(p.radius * 0.6, p.radius * 0.1, p.radius * 0.25, 0.1, Math.PI * 0.8);
+        this.ctx.stroke();
+
+        this.ctx.restore();
+      }
+
+      loop() {
+        if (!this.isRunning) return;
+        this.update();
+        this.draw();
+        this.animFrame = requestAnimationFrame(() => this.loop());
+      }
+    }
+
+    /* =========================================================================
+       MAIN GAME APPLICATION CONTROLLER
+       ========================================================================= */
+    class GameApplication {
+      constructor() {
+        this.currentLevel = 1; // 1 to 4
+        this.unlockedLevel = 1;
+        this.stars = 0;
+        this.eatenFish = 0;
+        this.targetFishPerLevel = 3;
+
+        this.currentQuestionIndex = 0;
+        this.selectedSentenceWords = [];
+
+        this.sounds = new SoundSystem();
+        this.gameEngine = null;
+
+        this.initDOM();
+      }
+
+      initDOM() {
+        const canvas = document.getElementById('gameCanvas');
+        this.gameEngine = new FeedingFrenzyEngine(
+          canvas,
+          (count, target) => this.handleFishEaten(count, target),
+          () => this.handleBombHit()
+        );
+      }
+
+      // --- SCREEN NAVIGATION ---
+
+      showWelcomeScreen() {
+        this.gameEngine.stop();
+        document.getElementById('screenWelcome').classList.remove('hidden');
+        document.getElementById('screenMissionMap').classList.add('hidden');
+        document.getElementById('topStatusBar').classList.add('hidden');
+        document.getElementById('modalQuizOverlay').classList.add('hidden');
+        document.getElementById('screenVictory').classList.add('hidden');
+      }
+
+      showMissionMap() {
+        this.gameEngine.stop();
+        this.updateMissionMapBadges();
+        document.getElementById('screenWelcome').classList.add('hidden');
+        document.getElementById('screenMissionMap').classList.remove('hidden');
+        document.getElementById('topStatusBar').classList.add('hidden');
+        document.getElementById('modalQuizOverlay').classList.add('hidden');
+        document.getElementById('screenVictory').classList.add('hidden');
+
+        this.sounds.speak("Peta misi. Pilih misi yang telah dibuka untuk bermain.");
+      }
+
+      updateMissionMapBadges() {
+        for (let lvl = 1; lvl <= 4; lvl++) {
+          const badge = document.getElementById(`badgeStatus${lvl}`);
+          const btn = document.getElementById(`btnStartMisi${lvl}`);
+          const card = document.getElementById(`cardMission${lvl}`);
+
+          if (lvl < this.unlockedLevel) {
+            badge.textContent = '✅';
+            btn.disabled = false;
+            btn.className = "w-full bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-2.5 px-4 rounded-xl border border-white shadow flex items-center justify-center gap-2 transition";
+            btn.innerHTML = `<i class="fa-solid fa-rotate-right"></i> Main Semula Misi ${lvl}`;
+            card.className = "bg-sky-800/90 border-2 border-emerald-400 rounded-2xl p-5 text-left flex flex-col justify-between shadow-xl relative overflow-hidden transition";
+          } else if (lvl === this.unlockedLevel) {
+            badge.textContent = '⭐';
+            btn.disabled = false;
+            btn.className = "w-full bg-amber-400 hover:bg-amber-300 text-sky-950 font-bold py-2.5 px-4 rounded-xl border border-white shadow flex items-center justify-center gap-2 transition";
+            btn.innerHTML = `<i class="fa-solid fa-gamepad"></i> Mula Misi ${lvl}`;
+            card.className = "bg-sky-800/90 border-2 border-amber-400 rounded-2xl p-5 text-left flex flex-col justify-between shadow-xl relative overflow-hidden transition transform hover:scale-[1.02]";
+          } else {
+            badge.textContent = '🔒';
+            btn.disabled = true;
+            btn.className = "w-full bg-slate-700 text-slate-400 font-bold py-2.5 px-4 rounded-xl border border-slate-600 cursor-not-allowed flex items-center justify-center gap-2 transition";
+            btn.innerHTML = `🔒 Terkunci`;
+            card.className = "bg-sky-900/60 border-2 border-sky-700 rounded-2xl p-5 text-left flex flex-col justify-between shadow-xl relative overflow-hidden transition opacity-80";
+          }
+        }
+      }
+
+      startLevel(levelNumber) {
+        this.currentLevel = levelNumber;
+        this.eatenFish = 0;
+        this.currentQuestionIndex = 0;
+
+        document.getElementById('screenWelcome').classList.add('hidden');
+        document.getElementById('screenMissionMap').classList.add('hidden');
+        document.getElementById('modalQuizOverlay').classList.add('hidden');
+        document.getElementById('screenVictory').classList.add('hidden');
+        document.getElementById('topStatusBar').classList.remove('hidden');
+
+        this.updateHUD();
+        this.gameEngine.setConfigForLevel(levelNumber);
+        this.gameEngine.start();
+
+        this.sounds.speak(`Tahap ${levelNumber}. Kawal ikan kamu dan makan tiga ekor ikan kecil!`);
+      }
+
+      updateHUD() {
+        document.getElementById('statLevel').textContent = this.currentLevel;
+        document.getElementById('statFish').textContent = `${this.eatenFish}/${this.targetFishPerLevel}`;
+        document.getElementById('statStars').textContent = this.stars;
+
+        const pct = Math.min(100, Math.round((this.eatenFish / this.targetFishPerLevel) * 100));
+        document.getElementById('missionProgressBar').style.width = `${pct}%`;
+        document.getElementById('missionProgressText').textContent = `${pct}%`;
+      }
+
+      // --- FEEDING FRENZY EVENTS ---
+
+      handleFishEaten(count, target) {
+        this.eatenFish = count;
+        this.sounds.playTing();
+        this.updateHUD();
+
+        if (this.eatenFish >= target) {
+          // Pause game engine & open quiz
+          setTimeout(() => {
+            this.gameEngine.stop();
+            this.openQuizModal();
+          }, 300);
+        }
+      }
+
+      handleBombHit() {
+        this.sounds.playBombTet();
+        if (this.eatenFish > 0) {
+          this.eatenFish--;
+          this.updateHUD();
+        }
+        this.showToast('💣', 'Awas! Terkena bom. Cuba lagi!', 'bg-rose-500');
+        this.sounds.speak("Awas! Terkena bom. Cuba lagi!");
+      }
+
+      showToast(icon, message, bgClass = 'bg-emerald-500') {
+        const toast = document.getElementById('toastNotification');
+        document.getElementById('toastIcon').textContent = icon;
+        document.getElementById('toastMessage').textContent = message;
+
+        toast.className = `fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-all duration-300 ${bgClass} text-white px-6 py-3 rounded-2xl shadow-2xl border-2 border-white flex items-center gap-3 text-base sm:text-lg font-black opacity-100 scale-100`;
+
+        setTimeout(() => {
+          toast.classList.add('opacity-0', 'scale-90');
+        }, 2200);
+      }
+
+      // --- QUIZ & QUESTION ENGINE ---
+
+      openQuizModal() {
+        document.getElementById('modalQuizOverlay').classList.remove('hidden');
+        document.getElementById('modalLevelBadge').textContent = `Tahap ${this.currentLevel}`;
+        this.loadCurrentQuestion();
+      }
+
+      loadCurrentQuestion() {
+        // Reset containers & feedback
+        document.getElementById('feedbackBox').classList.add('hidden');
+        document.getElementById('btnContinueQuiz').classList.add('hidden');
+        document.getElementById('containerOptions').classList.add('hidden');
+        document.getElementById('containerSentenceSort').classList.add('hidden');
+        document.getElementById('containerFillBlank').classList.add('hidden');
+
+        let qData = null;
+        if (this.currentLevel === 1) {
+          qData = QUESTION_BANK.level1[this.currentQuestionIndex];
+          document.getElementById('modalQuestionCount').textContent = `Soalan ${this.currentQuestionIndex + 1} daripada ${QUESTION_BANK.level1.length}`;
+          this.renderLevel1MultipleChoice(qData);
+        } else if (this.currentLevel === 2) {
+          qData = QUESTION_BANK.level2[this.currentQuestionIndex];
+          document.getElementById('modalQuestionCount').textContent = `Soalan ${this.currentQuestionIndex + 1} daripada ${QUESTION_BANK.level2.length}`;
+          this.renderLevel2SentenceSort(qData);
+        } else if (this.currentLevel === 3) {
+          qData = QUESTION_BANK.level3[this.currentQuestionIndex];
+          document.getElementById('modalQuestionCount').textContent = `Soalan ${this.currentQuestionIndex + 1} daripada ${QUESTION_BANK.level3.length}`;
+          this.renderLevel3FillBlank(qData);
+        } else {
+          // Level 4 / Final Challenge
+          qData = QUESTION_BANK.level3[0];
+          this.renderLevel3FillBlank(qData);
+        }
+
+        // Auto speak question prompt
+        if (qData && qData.speechText) {
+          this.sounds.speak(qData.speechText);
+        }
+      }
+
+      speakCurrentQuestion() {
+        let qData = null;
+        if (this.currentLevel === 1) qData = QUESTION_BANK.level1[this.currentQuestionIndex];
+        else if (this.currentLevel === 2) qData = QUESTION_BANK.level2[this.currentQuestionIndex];
+        else qData = QUESTION_BANK.level3[this.currentQuestionIndex];
+
+        if (qData && qData.speechText) {
+          this.sounds.speak(qData.speechText);
+        }
+      }
+
+      stopSpeech() {
+        this.sounds.stopSpeech();
+      }
+
+      // RENDER LEVEL 1 (Multiple Choice)
+      renderLevel1MultipleChoice(qData) {
+        document.getElementById('questionInstruction').textContent = qData.instruction;
+        document.getElementById('questionText').innerHTML = qData.question;
+
+        const optionsContainer = document.getElementById('containerOptions');
+        optionsContainer.innerHTML = '';
+        optionsContainer.classList.remove('hidden');
+
+        qData.options.forEach((optText, idx) => {
+          const btn = document.createElement('button');
+          btn.className = "w-full text-left bg-sky-900/90 hover:bg-sky-800 border-2 border-sky-400 p-4 rounded-2xl font-bold text-lg text-white shadow transition transform hover:translate-x-1 flex items-center justify-between";
+          btn.innerHTML = `<span>${optText}</span> <i class="fa-solid fa-circle-chevron-right text-sky-400"></i>`;
+          btn.onclick = () => this.checkMultipleChoice(idx, qData.correctIndex);
+          optionsContainer.appendChild(btn);
+        });
+      }
+
+      checkMultipleChoice(selectedIndex, correctIndex) {
+        if (selectedIndex === correctIndex) {
+          this.givePositiveFeedback("Bagus! Jawapan kamu betul!");
+          this.addStar();
+        } else {
+          this.giveNegativeFeedback("Jawapan kurang tepat. Cuba lagi.");
+        }
+      }
+
+      // RENDER LEVEL 2 (Sentence Sorting with Word Boxes)
+      renderLevel2SentenceSort(qData) {
+        document.getElementById('questionInstruction').textContent = qData.instruction;
+        document.getElementById('questionText').innerHTML = "Susun petak perkataan berikut:";
+
+        document.getElementById('containerSentenceSort').classList.remove('hidden');
+
+        // Shuffle words pool
+        this.currentWordPool = [...qData.words].sort(() => Math.random() - 0.5);
+        this.selectedSentenceWords = [];
+
+        this.renderSentenceTiles();
+      }
+
+      renderSentenceTiles() {
+        const poolContainer = document.getElementById('sentenceTilesPool');
+        const slotContainer = document.getElementById('sentenceAnswerSlot');
+
+        poolContainer.innerHTML = '';
+        slotContainer.innerHTML = '';
+
+        // Render Answer Slots
+        if (this.selectedSentenceWords.length === 0) {
+          slotContainer.innerHTML = `<span class="text-sky-400/60 text-sm italic">Sila tekan petak perkataan di bawah...</span>`;
+        } else {
+          this.selectedSentenceWords.forEach((word, idx) => {
+            const tile = document.createElement('button');
+            tile.className = "word-tile bg-gradient-to-r from-amber-400 to-yellow-400 text-sky-950 font-black px-3.5 py-2 rounded-xl border border-white shadow text-base flex items-center gap-1.5";
+            tile.innerHTML = `<span>${word}</span> <i class="fa-solid fa-xmark text-xs opacity-70"></i>`;
+            tile.onclick = () => {
+              this.selectedSentenceWords.splice(idx, 1);
+              this.renderSentenceTiles();
+            };
+            slotContainer.appendChild(tile);
+          });
+        }
+
+        // Render Word Pool Tiles
+        this.currentWordPool.forEach((word) => {
+          const isSelected = this.selectedSentenceWords.includes(word);
+          const tile = document.createElement('button');
+          if (isSelected) {
+            tile.className = "word-tile bg-sky-950 text-sky-600 font-bold px-3.5 py-2 rounded-xl border border-sky-800 cursor-not-allowed text-base opacity-40";
+            tile.disabled = true;
+            tile.textContent = word;
+          } else {
+            tile.className = "word-tile bg-sky-700 hover:bg-sky-600 text-white font-bold px-3.5 py-2 rounded-xl border border-sky-400 shadow text-base transition transform hover:scale-105 active:scale-95";
+            tile.textContent = word;
+            tile.onclick = () => {
+              this.selectedSentenceWords.push(word);
+              this.renderSentenceTiles();
+            };
+          }
+          poolContainer.appendChild(tile);
+        });
+      }
+
+      checkSentenceOrder() {
+        const qData = QUESTION_BANK.level2[this.currentQuestionIndex];
+        const userConstructed = this.selectedSentenceWords.join(' ').trim().toLowerCase();
+
+        // Standardize punctuation & spacing for flexible matching
+        const cleanTarget = qData.correctSentence.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").toLowerCase().trim();
+        const cleanUser = userConstructed.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").toLowerCase().trim();
+
+        if (cleanUser === cleanTarget) {
+          this.givePositiveFeedback("Hebat! Susunan ayat kamu betul!");
+          this.addStar();
+        } else {
+          this.giveNegativeFeedback("Cuba lagi. Susun petak perkataan mengikut ayat yang betul.");
+        }
+      }
+
+      resetSentenceOrder() {
+        this.selectedSentenceWords = [];
+        this.renderSentenceTiles();
+      }
+
+      // RENDER LEVEL 3 (Fill-in-the-blank)
+      renderLevel3FillBlank(qData) {
+        document.getElementById('questionInstruction').textContent = qData.instruction;
+        document.getElementById('questionText').innerHTML = qData.question;
+
+        const container = document.getElementById('containerFillBlank');
+        container.classList.remove('hidden');
+        const input = document.getElementById('inputBlankAnswer');
+        input.value = '';
+        input.focus();
+      }
+
+      submitFillBlank() {
+        const qData = QUESTION_BANK.level3[this.currentQuestionIndex];
+        const inputVal = document.getElementById('inputBlankAnswer').value.trim().toLowerCase();
+
+        if (!inputVal) return;
+
+        const isCorrect = qData.acceptedAnswers.some(ans => ans.toLowerCase() === inputVal);
+
+        if (isCorrect) {
+          this.givePositiveFeedback("Tahniah! Jawapan kamu betul!");
+          this.addStar();
+        } else {
+          this.giveNegativeFeedback("Cuba lagi. Fikirkan perkataan yang paling sesuai untuk melengkapkan ayat.");
+        }
+      }
+
+      // FEEDBACK HELPERS
+      givePositiveFeedback(msg) {
+        const fb = document.getElementById('feedbackBox');
+        fb.className = "p-4 rounded-2xl border-2 border-emerald-400 bg-emerald-900/80 text-emerald-200 flex items-center gap-3 transition mb-4";
+        document.getElementById('feedbackIcon').textContent = "🎉";
+        document.getElementById('feedbackText').textContent = msg;
+        fb.classList.remove('hidden');
+
+        document.getElementById('btnContinueQuiz').classList.remove('hidden');
+        this.sounds.speak(msg);
+      }
+
+      giveNegativeFeedback(msg) {
+        const fb = document.getElementById('feedbackBox');
+        fb.className = "p-4 rounded-2xl border-2 border-amber-400 bg-amber-900/80 text-amber-200 flex items-center gap-3 transition mb-4";
+        document.getElementById('feedbackIcon').textContent = "💡";
+        document.getElementById('feedbackText').textContent = msg;
+        fb.classList.remove('hidden');
+
+        this.sounds.speak(msg);
+      }
+
+      addStar() {
+        this.stars += 1;
+        this.updateHUD();
+        this.showToast('⭐', '+1 BINTANG!', 'bg-amber-500');
+      }
+
+      handleContinueQuiz() {
+        let maxQuestions = 1;
+        if (this.currentLevel === 1) maxQuestions = QUESTION_BANK.level1.length;
+        else if (this.currentLevel === 2) maxQuestions = QUESTION_BANK.level2.length;
+        else if (this.currentLevel === 3) maxQuestions = QUESTION_BANK.level3.length;
+
+        this.currentQuestionIndex++;
+
+        if (this.currentQuestionIndex < maxQuestions) {
+          this.loadCurrentQuestion();
+        } else {
+          // Level Completed! Advance to next mission
+          document.getElementById('modalQuizOverlay').classList.add('hidden');
+
+          if (this.currentLevel < 3) {
+            this.unlockedLevel = Math.max(this.unlockedLevel, this.currentLevel + 1);
+            this.showToast('🏆', `Tahap ${this.currentLevel} Selesai!`, 'bg-emerald-500');
+            setTimeout(() => {
+              this.startLevel(this.currentLevel + 1);
+            }, 1200);
+          } else {
+            // Victory! Completed all levels
+            this.unlockedLevel = 4;
+            this.showVictoryScreen();
+          }
+        }
+      }
+
+      showVictoryScreen() {
+        this.gameEngine.stop();
+        document.getElementById('topStatusBar').classList.add('hidden');
+        document.getElementById('modalQuizOverlay').classList.add('hidden');
+        document.getElementById('screenVictory').classList.remove('hidden');
+
+        this.speakVictoryMessage();
+      }
+
+      speakVictoryMessage() {
+        this.sounds.speak("Tahniah! Kamu berjaya menyelesaikan Misi Ejaan Sihat. Kamu memang Juara Ejaan!");
+      }
+
+      restartGame() {
+        this.currentLevel = 1;
+        this.unlockedLevel = 1;
+        this.stars = 0;
+        this.eatenFish = 0;
+
+        this.showToast('🔄', 'Permainan dimulakan semula. Mari bermain!', 'bg-sky-500');
+        this.sounds.speak("Permainan dimulakan semula. Mari bermain!");
+
+        setTimeout(() => {
+          this.startLevel(1);
+        }, 1000);
+      }
+
+      toggleGlobalAudio() {
+        this.sounds.audioEnabled = !this.sounds.audioEnabled;
+        const icon = document.getElementById('audioIcon');
+        if (this.sounds.audioEnabled) {
+          icon.className = "fa-solid fa-volume-high text-lg";
+          this.sounds.speak("Audio dihidupkan.");
+        } else {
+          icon.className = "fa-solid fa-volume-xmark text-lg text-rose-400";
+          this.sounds.stopSpeech();
+        }
+      }
+
+      playSplashFishAnim() {
+        this.sounds.playTing();
+        this.sounds.speak("Hai! Jom belajar ejaan Bahasa Melayu bersama-sama!");
+      }
+    }
+
+    // Initialize Game Application when window loads completely
+    let gameApp = null;
+    window.onload = function () {
+      gameApp = new GameApplication();
+    };
+  </script>
+</body>
+</html>
